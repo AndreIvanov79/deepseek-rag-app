@@ -5,12 +5,20 @@ import tempfile
 from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
-from llama_index import ServiceContext, VectorStoreIndex, StorageContext, load_index_from_storage
-from llama_index.node_parser import CodeSplitter
-from llama_index.schema import Document
-from llama_index_embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.llms import HuggingFaceLLM
-from llama_index.prompts import PromptTemplate
+from llama_index.core import VectorStoreIndex, StorageContext, load_index_from_storage
+from llama_index.core.settings import Settings  # This replaces ServiceContext
+from llama_index.core.schema import Document
+from llama_index.core.node_parser import CodeSplitter
+from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.llms.huggingface import HuggingFaceLLM
+from llama_index.core.prompts import PromptTemplate
+
+# from llama_index import ServiceContext, VectorStoreIndex, StorageContext, load_index_from_storage
+# from llama_index import CodeSplitter
+# from llama_index.schema import Document
+# from llama_index_embeddings.huggingface import HuggingFaceEmbedding
+# from llama_index.llms import HuggingFaceLLM
+# from llama_index.prompts import PromptTemplate
 
 class RAGManager:
     def __init__(self, 
@@ -149,7 +157,8 @@ class RAGManager:
             )
             
             # Create service context
-            service_context = ServiceContext.from_defaults(
+            
+            service_context = Settings.from_defaults(
                 llm=None,
                 embed_model=self.embedding_model,
                 node_parser=splitter
