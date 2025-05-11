@@ -274,40 +274,32 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
             await query.edit_message_text("Error: Project not found.")
 
 async def process_zip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Process uploaded ZIP file."""
+    """Process uploaded file."""
     user_id = update.effective_user.id
-    
+
     await init_model()
-    
+
     # Download the file
     file = await context.bot.get_file(update.message.document.file_id)
-    
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".zip") as temp_file:
+
+    # Get original file extension
+    file_name = update.message.document.file_name
+    file_extension = os.path.splitext(file_name)[1].lower() if file_name else ""
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
         await file.download_to_drive(custom_path=temp_file.name)
-        
-        # Check if it's a valid zip file
-        try:
-            with zipfile.ZipFile(temp_file.name, 'r') as zip_ref:
-                # Just test the zip file, don't extract yet
-                pass
-                
-            # Initialize user data if not present
-            if user_id not in user_data:
-                user_data[user_id] = {}
-            
-            # Store zip path and wait for project name
-            user_data[user_id]["temp_zip_path"] = temp_file.name
-            user_data[user_id]["waiting_for_project_name"] = True
-            
-            await update.message.reply_text(
-                "ZIP file received! Please provide a name for this project:"
-            )
-            
-        except zipfile.BadZipFile:
-            os.unlink(temp_file.name)
-            await update.message.reply_text(
-                "❌ The file you uploaded is not a valid ZIP file. Please try again."
-            )
+
+        # Initialize user data if not present
+        if user_id not in user_data:
+            user_data[user_id] = {}
+
+        # Store file path and wait for project name
+        user_data[user_id]["temp_zip_path"] = temp_file.name
+        user_data[user_id]["waiting_for_project_name"] = True
+
+        await update.message.reply_text(
+            f"File received! Please provide a name for this project:"
+        )
 
 async def process_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Process a photo containing code."""
@@ -534,9 +526,9 @@ def main() -> None:
     # Add callback query handler for inline buttons
     application.add_handler(CallbackQueryHandler(button_callback))
     
-    # Add handler for ZIP files
+    # Add handler for all document files
     application.add_handler(MessageHandler(
-        filters.Document.ZIP, process_zip
+        filters.Document.ALL, process_zip
     ))
     
     # Add handler for photos

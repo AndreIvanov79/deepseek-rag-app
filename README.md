@@ -22,6 +22,19 @@ This application combines DeepSeek-Coder 33B model with RAG (Retrieval-Augmented
   - On MacOS: `brew install tesseract`
   - On Windows: Download from [GitHub](https://github.com/UB-Mannheim/tesseract/wiki)
 
+  # 1) Обновляем списки пакетов
+   apt-get update
+
+   # 2) Устанавливаем helper для репозиториев (если ещё нет)
+   apt-get install -y software-properties-common
+
+   # 3) Включаем репозиторий universe
+   add-apt-repository universe
+
+   # 4) Ещё раз обновляем списки и ставим tesseract
+   apt-get update
+   apt-get install -y tesseract-ocr
+
 ## Installation
 
 1. Clone the repository and navigate to it:
@@ -30,6 +43,9 @@ This application combines DeepSeek-Coder 33B model with RAG (Retrieval-Augmented
 git clone https://github.com/yourusername/deepseek-rag-app.git
 cd deepseek-rag-app
 ```
+
+chmod +x setup.sh
+./setup.sh
 
 2. Create a virtual environment:
 
@@ -58,6 +74,8 @@ cp .env.example .env
 
 ```bash
 python main.py streamlit
+
+streamlit run app/streamlit_app.py --server.address 0.0.0.0 --server.port 8501 --server.enableCORS false
 ```
 
 This will start the Streamlit server, typically accessible at `http://localhost:8501`.

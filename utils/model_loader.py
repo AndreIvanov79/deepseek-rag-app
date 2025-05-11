@@ -4,7 +4,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import Tuple, Dict, Any
 
 class ModelLoader:
-    def __init__(self, model_name: str = "deepseek-ai/deepseek-coder-33b-instruct", 
+    def __init__(self, model_name: str = "deepseek-ai/deepseek-coder-33b-instruct",
                  cache_dir: str = "./models"):
         """
         Initialize the ModelLoader.

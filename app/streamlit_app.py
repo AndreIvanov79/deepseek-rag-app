@@ -124,7 +124,7 @@ with st.sidebar:
                         st.session_state.rag_manager = RAGManager(st.session_state.model_loader)
                     
                     st.success("Model loaded successfully!")
-                    st.experimental_rerun()
+                    st.rerun()
                 except Exception as e:
                     st.error(f"Error loading model: {str(e)}")
     else:
@@ -143,38 +143,39 @@ with st.sidebar:
             if "rag_manager" in st.session_state:
                 del st.session_state.rag_manager
             st.session_state.model_loaded = False
-            st.experimental_rerun()
+            st.rerun()
     
     # Project management section
     st.header("Project Context")
     
     # Project upload
     if st.session_state.model_loaded:
-        uploaded_file = st.file_uploader("Upload Project ZIP", type="zip")
+        uploaded_file = st.file_uploader("Upload Project File", type=None, accept_multiple_files=False)
         project_name = st.text_input("Project Name")
-        
+
         if uploaded_file is not None and project_name:
             if st.button("Process Project"):
                 with st.spinner("Processing project..."):
                     try:
                         # Save the uploaded file to a temporary location
-                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".zip")
+                        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+                        temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=file_extension)
                         temp_file.write(uploaded_file.getvalue())
                         temp_file.close()
-                        
-                        # Create index from the zip file
+
+                        # Create index from the file
                         project_id, doc_count = st.session_state.rag_manager.create_index_from_zip(
                             project_name, temp_file.name
                         )
-                        
+
                         # Clean up the temporary file
                         os.unlink(temp_file.name)
-                        
+
                         st.success(f"Project '{project_name}' processed successfully! Indexed {doc_count} documents.")
-                        
+
                         # Set as selected project
                         st.session_state.selected_project = project_id
-                        
+
                     except Exception as e:
                         st.error(f"Error processing project: {str(e)}")
         
@@ -199,7 +200,7 @@ with st.sidebar:
                     if st.session_state.rag_manager.delete_project(st.session_state.selected_project):
                         st.success(f"Project '{project_options[st.session_state.selected_project]}' deleted.")
                         st.session_state.selected_project = None
-                        st.experimental_rerun()
+                        st.rerun()
     
     # About section
     st.header("About")
@@ -260,7 +261,7 @@ if uploaded_image is not None:
                 # Create a message with the extracted code
                 code_message = f"I've extracted this code from an image:\n```{language}\n{extracted_code}\n```"
                 st.session_state.messages.append({"role": "user", "content": code_message, "image_path": image_path})
-                st.experimental_rerun()
+                st.rerun()
 
         with col2:
             if st.button("Ask about this Code"):
@@ -314,7 +315,7 @@ if uploaded_image is not None:
                 else:
                     st.error("Please load the model first from the sidebar.")
 
-                st.experimental_rerun()
+                st.rerun()
     else:
         st.error(f"Failed to extract code: {result.get('error', 'Unknown error')}")
 
@@ -398,4 +399,4 @@ if st.button("Clear Chat"):
                 pass
 
     st.session_state.messages = []
-    st.experimental_rerun()
+    st.rerun()

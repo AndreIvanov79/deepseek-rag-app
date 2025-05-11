@@ -57,91 +57,120 @@ class RAGManager:
                         project_name = f.read().strip()
                         self.projects[item] = project_name
     
-    def _extract_zip(self, zip_path: str) -> str:
+    def _extract_zip(self, file_path: str) -> str:
         """
-        Extract a zip file to a temporary directory.
-        
+        Extract a file to a temporary directory. For zip files, extracts the contents.
+        For other files, copies the file to the directory.
+
         Args:
-            zip_path: Path to the zip file
-            
+            file_path: Path to the file
+
         Returns:
             Path to the extracted directory
         """
         temp_dir = tempfile.mkdtemp()
-        
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
-        
+
+        # Check if file is a zip file
+        if zipfile.is_zipfile(file_path):
+            with zipfile.ZipFile(file_path, 'r') as zip_ref:
+                zip_ref.extractall(temp_dir)
+        else:
+            # For non-zip files, just copy the file to the temp directory
+            file_name = os.path.basename(file_path)
+            shutil.copy2(file_path, os.path.join(temp_dir, file_name))
+
         return temp_dir
     
     def _get_code_documents(self, project_dir: str, ignored_extensions: List[str] = None) -> List[Document]:
         """
         Get code documents from a project directory.
-        
+
         Args:
             project_dir: Path to project directory
             ignored_extensions: File extensions to ignore
-            
+
         Returns:
             List of Document objects
         """
         if ignored_extensions is None:
             ignored_extensions = [
                 '.pyc', '.git', '.idea', '.vscode', '.DS_Store', '__pycache__',
-                '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.pdf', '.zip',
-                '.tar', '.gz', '.rar', '.7z', '.exe', '.dll', '.so', '.dylib',
-                '.class', '.jar'
+                '.exe', '.dll', '.so', '.dylib', '.class', '.jar'
             ]
-        
+
+        binary_extensions = [
+            '.png', '.jpg', '.jpeg', '.gif', '.svg', '.ico', '.pdf', '.zip',
+            '.tar', '.gz', '.rar', '.7z', '.bin', '.dat', '.db', '.sqlite'
+        ]
+
         documents = []
-        
+
         for root, _, files in os.walk(project_dir):
             for file in files:
-                # Skip ignored extensions
-                if any(file.endswith(ext) or ext in root for ext in ignored_extensions):
+                # Skip ignored folders/extensions
+                if any(ext in root for ext in ignored_extensions):
                     continue
-                
+
                 file_path = os.path.join(root, file)
+                file_ext = Path(file).suffix.lower()
+                relative_path = os.path.relpath(file_path, project_dir)
+
+                # Handle different file types
                 try:
-                    with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                        content = f.read()
-                    
-                    relative_path = os.path.relpath(file_path, project_dir)
-                    document = Document(
-                        text=content,
-                        metadata={
-                            'filename': relative_path,
-                            'file_path': relative_path,
-                            'file_type': Path(file).suffix,
-                            'file_size': os.path.getsize(file_path)
-                        }
-                    )
+                    # Skip binary files but include their metadata
+                    if file_ext in binary_extensions:
+                        document = Document(
+                            text=f"Binary file: {relative_path}",
+                            metadata={
+                                'filename': relative_path,
+                                'file_path': relative_path,
+                                'file_type': file_ext,
+                                'file_size': os.path.getsize(file_path),
+                                'is_binary': True
+                            }
+                        )
+                    else:
+                        # Try to read as text file
+                        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                            content = f.read()
+
+                        document = Document(
+                            text=content,
+                            metadata={
+                                'filename': relative_path,
+                                'file_path': relative_path,
+                                'file_type': file_ext,
+                                'file_size': os.path.getsize(file_path),
+                                'is_binary': False
+                            }
+                        )
+
                     documents.append(document)
                 except Exception as e:
                     print(f"Error reading file {file_path}: {e}")
-        
+
         return documents
     
-    def create_index_from_zip(self, project_name: str, zip_path: str) -> Tuple[str, int]:
+    def create_index_from_zip(self, project_name: str, file_path: str) -> Tuple[str, int]:
         """
-        Create a search index from a zipped project.
-        
+        Create a search index from a file or zipped project.
+
         Args:
             project_name: Name of the project
-            zip_path: Path to the zip file
-            
+            file_path: Path to the file (zip or any other file)
+
         Returns:
             Tuple containing the project ID and number of documents indexed
         """
-        # Extract zip to temporary directory
-        extract_dir = self._extract_zip(zip_path)
-        
+        # Extract to temporary directory
+        extract_dir = self._extract_zip(file_path)
+
         try:
             # Get code documents
             documents = self._get_code_documents(extract_dir)
-            
+
             if not documents:
-                raise ValueError("No valid documents found in the project zip.")
+                raise ValueError("No valid documents found in the file.")
             
             # Create project ID and directory
             project_id = f"project_{len(self.projects) + 1}"
@@ -152,7 +181,7 @@ class RAGManager:
             splitter = CodeSplitter(
                 language="python",
                 chunk_lines=40,
-                chunk_overlap_lines=15,
+                chunk_lines_overlap=15,
                 max_chars=1500
             )
             
